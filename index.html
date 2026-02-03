@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HACKER_DEFENSE // MULTIPLAYER</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --neon: #00ffff; --bg: #030308; --red: #ff2d55; --green: #39ff14; }
+        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+
+        #ui-wrapper { display: flex; flex-direction: column; align-items: center; height: 100vh; padding: 20px; }
+        .grid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(var(--neon) 1px, transparent 1px), linear-gradient(90deg, var(--neon) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.05; z-index: -1; }
+
+        .header { display: flex; justify-content: space-between; width: 1000px; border-bottom: 2px solid var(--neon); padding-bottom: 10px; margin-bottom: 20px; }
+        .hp-container { width: 300px; height: 25px; border: 1px solid var(--neon); position: relative; }
+        .hp-fill { height: 100%; background: var(--red); width: 100%; transition: width 0.4s; box-shadow: 0 0 10px var(--red); }
+
+        .action-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; width: 1000px; margin-top: auto; padding-bottom: 40px; }
+        .move-btn {
+            background: rgba(0, 255, 255, 0.05); border: 1px solid var(--neon); color: var(--neon); padding: 15px;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: 0.2s;
+        }
+        .move-btn:hover { background: var(--neon); color: #000; }
+        .move-btn i { margin-bottom: 8px; }
+
+        /* Power Combo Glitch Effect */
+        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-5px, 5px); } 40% { transform: translate(-5px, -5px); } 60% { transform: translate(5px, 5px); } 80% { transform: translate(5px, -5px); } 100% { transform: translate(0); } }
+        .system-breach { animation: glitch 0.2s infinite; border-color: white !important; filter: hue-rotate(90deg); }
+    </style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div id="ui-wrapper">
+    <div class="header">
+        <div>USER: <span id="my-id">---</span><div class="hp-container"><div id="my-hp" class="hp-fill"></div></div></div>
+        <div style="text-align: center;">VIRTUAL_AVATAR<br><canvas id="avatar" width="100" height="100"></canvas></div>
+        <div style="text-align: right;">TARGET: <span id="opp-id">WAITING...</span><div class="hp-container"><div id="opp-hp" class="hp-fill"></div></div></div>
+    </div>
+
+    <div id="status-msg" style="font-size: 24px; margin-top: 100px;">ESTABLISHING UPLINK...</div>
+
+    <div class="action-grid">
+        <button class="move-btn" onclick="sendAction('Phishing', 3500, 'mail')"><i data-lucide="mail"></i>PHISHING</button>
+        <button class="move-btn" onclick="sendAction('SQLi', 6000, 'database')"><i data-lucide="database"></i>SQLi</button>
+        <button class="move-btn" onclick="sendAction('DDoS', 10000, 'zap')"><i data-lucide="zap"></i>DDoS</button>
+        <button class="move-btn" onclick="sendAction('Ransom', 15000, 'lock')"><i data-lucide="lock"></i>RANSOM</button>
+
+        <button class="move-btn" style="border-color: var(--green);" onclick="sendAction('Patch', 3000, 'activity')"><i data-lucide="activity"></i>PATCH (REGEN)</button>
+        <button class="move-btn" style="border-color: orange;" onclick="sendAction('HoneyPot', 2500, 'target')"><i data-lucide="target"></i>HONEYPOT</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let myHP = 100, oppHP = 100, room = null, lastAttack = null, lastAttackTime = 0;
+
+    // LOGIN & CHARACTER GEN
+    async function init() {
+        const name = prompt("Enter Identifier:") || "Guest";
+        const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username: name, password: '123'}) });
+        const data = await res.json();
+
+        document.getElementById('my-id').innerText = data.char_name;
+        drawAvatar(data.seed);
+        socket.emit('join_queue', { username: name });
+        lucide.createIcons();
+    }
+
+    function drawAvatar(seed) {
+        const ctx = document.getElementById('avatar').getContext('2d');
+        ctx.strokeStyle = '#00ffff';
+        ctx.beginPath();
+        for(let i=0; i<8; i++) {
+            const angle = (i/8) * Math.PI * 2;
+            const r = 20 + (Math.sin(seed * (i+1)) * 20) + 20;
+            const x = 50 + Math.cos(angle) * r;
+            const y = 50 + Math.sin(angle) * r;
+            if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.closePath(); ctx.stroke();
+    }
+
+    // MULTIPLAYER SYNC
+    socket.on('start_match', (data) => {
+        room = data.room;
+        document.getElementById('status-msg').innerText = "CONNECTION SECURED. COMMENCE ATTACK.";
+    });
+
+    function sendAction(type, duration, icon) {
+        if(!room) return;
+
+        // COMBO DETECTION: Phishing + SQLi within 2 seconds
+        let isCombo = false;
+        if(type === 'SQLi' && lastAttack === 'Phishing' && (Date.now() - lastAttackTime < 2000)) {
+            isCombo = true;
+            triggerBreachEffect();
+        }
+
+        lastAttack = type; lastAttackTime = Date.now();
+        socket.emit('sync_action', { room, type, duration, isCombo });
+        document.getElementById('status-msg').innerText = `EXECUTING ${type.toUpperCase()}...`;
+    }
+
+    function triggerBreachEffect() {
+        document.body.classList.add('system-breach');
+        setTimeout(() => document.body.classList.remove('system-breach'), 1000);
+        document.getElementById('status-msg').innerText = "CRITICAL: SYSTEM BREACH COMBO!";
+    }
+
+    socket.on('opponent_action', (data) => {
+        // Handle incoming damage/effects here
+        if(data.isCombo) triggerBreachEffect();
+        console.log("Opponent performed:", data.type);
+    });
+
+    init();
+</script>
+</body>
+</html>
