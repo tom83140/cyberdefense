@@ -9,9 +9,20 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 
+# --- DATABASE SETUP ---
+# This line looks for a variable named 'DATABASE_URL' in Render's settings.
+# If it doesn't find it, it defaults to a local file 'hacker_defense.db'.
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# --- DATABASE & PERSISTENCE ---
-DATABASE_URL = "sqlite:///./cyber_grid.db"
+if DATABASE_URL:
+    # Render's Postgres URLs often start with 'postgres://',
+    # but SQLAlchemy requires 'postgresql://'. This fix handles that:
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+else:
+    DATABASE_URL = "sqlite:///./hacker_defense.db"
+
+# Now we use the variable we just defined
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
