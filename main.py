@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # --- DATABASE & PERSISTENCE ---
-DATABASE_URL = "sqlite:///./cyber_grid.db"
+# DATABASE_URL = "sqlite:///./cyber_grid.db"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -98,3 +98,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
 
     uvicorn.run(socket_app, host="0.0.0.0", port=port)
+
