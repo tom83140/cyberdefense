@@ -113,7 +113,25 @@
         if(data.isCombo) triggerBreachEffect();
         console.log("Opponent performed:", data.type);
     });
+socket.on('apply_effect', (data) => {
+    if (data.effect === 'slowdown') {
+        document.getElementById('status-msg').innerText = "⚠️ SYSTEM SLOWDOWN DETECTED!";
+        document.body.style.filter = "grayscale(1) contrast(0.5)";
+        // Make buttons sluggish
+        const btns = document.querySelectorAll('.move-btn');
+        btns.forEach(b => b.style.pointerEvents = 'none');
 
+        setTimeout(() => {
+            btns.forEach(b => b.style.pointerEvents = 'auto');
+            document.body.style.filter = "none";
+            document.getElementById('status-msg').innerText = "SYSTEM RESTORED.";
+        }, data.duration);
+    }
+
+    if (data.effect === 'glitch') {
+        triggerBreachEffect(); // Reuses the animation we made earlier
+    }
+});
     init();
 </script>
 </body>

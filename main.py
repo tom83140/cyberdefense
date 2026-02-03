@@ -1,11 +1,14 @@
 import os, random, uuid, json
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import socketio
 from sqlalchemy import create_engine, Column, String, Integer, JSON, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+
 
 # --- DATABASE & PERSISTENCE ---
 # DATABASE_URL = "sqlite:///./cyber_grid.db"
@@ -84,18 +87,32 @@ async def join_queue(sid, data):
     else:
         waiting_room = sid
 
+
 @sio.event
 async def sync_action(sid, data):
-    # Broadcast attacks/defenses to the opponent in the room
-    await sio.emit('opponent_action', data, room=data['room'], skip_sid=sid)
+    room = data['room']
+    action_type = data['type']
+
+    # If it's a DDoS, we tell the opponent to 'slow down'
+    if action_type == "DDoS":
+        await sio.emit('apply_effect', {'effect': 'slowdown', 'duration': 5000}, room=room, skip_sid=sid)
+
+    # If a combo was detected by the attacker's frontend, broadcast the 'breach'
+    if data.get('isCombo'):
+        await sio.emit('apply_effect', {'effect': 'glitch', 'duration': 2000}, room=room, skip_sid=sid)
+
+    # Standard broadcast so the opponent sees the attack bar
+    await sio.emit('opponent_action', data, room=room, skip_sid=sid)
+
 @app.get("/")
 async def serve_ui():
     # This tells the server: "When someone visits the main site, send them index.html"
     return FileResponse("index.html")
 
+# IMPORTANT: Make sure this is BELOW your other @app.get routes
+# but ABOVE the "if __name__ == '__main__':" block.
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-
     uvicorn.run(socket_app, host="0.0.0.0", port=port)
-
