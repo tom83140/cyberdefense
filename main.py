@@ -117,11 +117,10 @@ async def sync_action(sid, data):
 
 @app.get("/")
 async def serve_ui():
-    # This tells the server: "When someone visits the main site, send them index.html"
-    return FileResponse("index.html")
-
-# IMPORTANT: Make sure this is BELOW your other @app.get routes
-# but ABOVE the "if __name__ == '__main__':" block.
+    # Adding path check for safety
+    if os.path.exists("index.html"):
+        return FileResponse("index.html")
+    return {"error": "index.html not found on server"}
 
 if __name__ == "__main__":
     import uvicorn
