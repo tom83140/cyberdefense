@@ -2,3 +2,5 @@ fastapi
 uvicorn
 python-socketio
 sqlalchemy
+python-multipart
+psycopg2-binary
