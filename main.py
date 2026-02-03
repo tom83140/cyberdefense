@@ -88,8 +88,13 @@ async def join_queue(sid, data):
 async def sync_action(sid, data):
     # Broadcast attacks/defenses to the opponent in the room
     await sio.emit('opponent_action', data, room=data['room'], skip_sid=sid)
+@app.get("/")
+async def serve_ui():
+    # This tells the server: "When someone visits the main site, send them index.html"
+    return FileResponse("index.html")
 
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
+
     uvicorn.run(socket_app, host="0.0.0.0", port=port)
