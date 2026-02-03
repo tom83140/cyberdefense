@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 # --- DATABASE & PERSISTENCE ---
-# DATABASE_URL = "sqlite:///./cyber_grid.db"
+DATABASE_URL = "sqlite:///./cyber_grid.db"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
